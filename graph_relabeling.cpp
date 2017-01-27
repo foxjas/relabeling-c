@@ -15,14 +15,6 @@ typedef vertexId_t length_t;
 
 using namespace std;
 
-bool hasOption(const char* option, int argc, char **argv) {
-  for (int i = 1; i < argc; i++) {
-      if (strcmp(argv[i], option) == 0)
-          return true;
-  }
-  return false;
-}
-
 char* getOption(const char* option, int argc, char **argv) {
   for (int i = 1; i < argc-1; i++) {
       if (strcmp(argv[i], option) == 0)
@@ -35,34 +27,38 @@ void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* out_typ
     vertexId_t nv,*src,*dest;
     length_t   ne;
     nv = ne = -1;
-
     const int MAX_CHARS = 1000;
     char temp[MAX_CHARS];
+    char *written;
     FILE *fp = fopen(inputGraphPath, "r");
 
     // scan for SNAP header comment
     while (nv == -1 || ne == -1) {
     	fgets(temp, MAX_CHARS, fp);
-    	sscanf(temp, "# Nodes: %d%*s Edges: %d\n", &nv,&ne);
+    	sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
     }
-    while (fgets(temp, MAX_CHARS, fp) && *temp == '#'); // skip any other comments
+
+    written = fgets(temp, MAX_CHARS, fp);
+    while (written != NULL && *temp == '#') { // skip any other comments
+        written = fgets(temp, MAX_CHARS, fp);
+    }
 
     src = (vertexId_t *) malloc ((ne ) * sizeof (vertexId_t));
     dest = (vertexId_t *) malloc ((ne ) * sizeof (vertexId_t));
     unordered_set<vertexId_t> vertex_set;
-
     vertexId_t counter=0;
     vertexId_t srctemp,desttemp;
+
     // read in edges
     while(counter<ne)
     {
-        fgets(temp, MAX_CHARS, fp);
         sscanf(temp, "%d %d\n", (vertexId_t*)&srctemp, (vertexId_t*)&desttemp);
         src[counter]=srctemp;
         dest[counter]=desttemp;
         vertex_set.insert(srctemp);
         vertex_set.insert(desttemp);
         counter++;
+        fgets(temp, MAX_CHARS, fp);
     }
     fclose (fp);
 
@@ -115,31 +111,35 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* out_
     vertexId_t nv,*src,*dest;
     length_t   ne;
     nv = ne = -1;
-
     const int MAX_CHARS = 1000;
     char temp[MAX_CHARS];
+    char *written;
     FILE *fp = fopen(inputGraphPath, "r");
 
     // scan for SNAP header comment
     while (nv == -1 || ne == -1) {
         fgets(temp, MAX_CHARS, fp);
-        sscanf(temp, "# Nodes: %d%*s Edges: %d\n", &nv,&ne);
+        sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
     }
-    while (fgets(temp, MAX_CHARS, fp) && *temp == '#'); // skip any other comments
+
+    written = fgets(temp, MAX_CHARS, fp);
+    while (written != NULL && *temp == '#') { // skip any other comments
+        written = fgets(temp, MAX_CHARS, fp);
+    }
 
     src = (vertexId_t *) malloc ((ne ) * sizeof (vertexId_t));
     dest = (vertexId_t *) malloc ((ne ) * sizeof (vertexId_t));
-
     vertexId_t counter=0;
     vertexId_t srctemp,desttemp;
+
     // read in edges
     while(counter<ne)
     {
-        fgets(temp, MAX_CHARS, fp);
         sscanf(temp, "%d %d\n", (vertexId_t*)&srctemp, (vertexId_t*)&desttemp);
         src[counter]=srctemp;
         dest[counter]=desttemp;
         counter++;
+        fgets(temp, MAX_CHARS, fp);
     }
     fclose (fp);
 
@@ -147,11 +147,11 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* out_
     vertexId_t vid, i=0;
     vector<vertexId_t> vertices(nv);
     fp = fopen(partitionInfoPath, "r");
-    char *written = fgets(temp, MAX_CHARS, fp);
+    written = fgets(temp, MAX_CHARS, fp);
     while (written != NULL && *temp == '#') { // skip comments
         written = fgets(temp, MAX_CHARS, fp);
     }
-    while (written != NULL) {
+    while (written != NULL) { // read vertices in-order
         sscanf(temp, "%d %*s\n", (vertexId_t*)&vid);
         vertices[i] = vid;
         written = fgets(temp, MAX_CHARS, fp);
@@ -168,7 +168,6 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* out_
     // write out relabeled graph to file
     ofstream fout;
     fout.open(relabeledGraphPath);
-
     bool snap_output = (out_type == NULL || strcmp(out_type, "snap") == 0);
     if (snap_output) {
         printf("Outputting new SNAP graph\n");
