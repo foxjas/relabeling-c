@@ -31,7 +31,7 @@ char* getOption(const char* option, int argc, char **argv) {
   return NULL;
 }
 
-void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath) {
+void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* out_type, char* mappingPath) {
     vertexId_t nv,*src,*dest;
     length_t   ne;
     nv = ne = -1;
@@ -79,12 +79,23 @@ void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mapping
     // write out relabeled graph to file
     ofstream fout;
     fout.open(relabeledGraphPath);
-    fout << "# Nodes: " << vertices.size() << " " << "Edges: " << counter << "\n";
+    bool snap_output = (out_type == NULL || strcmp(out_type, "snap") == 0);
+    if (snap_output) {
+        printf("Outputting new SNAP graph\n");
+        fout << "# Nodes: " << vertices.size() << " " << "Edges: " << ne << "\n";
+    } else {
+        printf("Outputting new matrix market graph\n");
+        fout << vertices.size() << " " <<  vertices.size() << " " << ne << "\n";
+    }
     vertexId_t relabeledSrc, relabeledDest;
     for (vertexId_t i=0; i<counter; i++) {
         relabeledSrc = relabel_map[src[i]];
         relabeledDest = relabel_map[dest[i]];
-        fout << relabeledSrc << " " << relabeledDest << "\n";
+        if (snap_output) {
+            fout << relabeledSrc << " " << relabeledDest << "\n";
+        } else {
+            fout << relabeledSrc+1 << " " << relabeledDest+1 << "\n";
+        }
     }
     fout.close();
 
@@ -100,7 +111,7 @@ void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mapping
     free(dest);
 }
 
-void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* partitionInfoPath, char* mappingPath) {
+void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* out_type, char* partitionInfoPath, char* mappingPath) {
     vertexId_t nv,*src,*dest;
     length_t   ne;
     nv = ne = -1;
@@ -133,14 +144,18 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* part
     fclose (fp);
 
     // read in community-partitioned vertices
-    vertexId_t vid;
+    vertexId_t vid, i=0;
     vector<vertexId_t> vertices(nv);
     fp = fopen(partitionInfoPath, "r");
-    while (fgets(temp, MAX_CHARS, fp) && *temp == '#'); // skip comments
-    for (length_t i=0; i<nv; i++) {
-        fgets(temp, MAX_CHARS, fp);
+    char *written = fgets(temp, MAX_CHARS, fp);
+    while (written != NULL && *temp == '#') { // skip comments
+        written = fgets(temp, MAX_CHARS, fp);
+    }
+    while (written != NULL) {
         sscanf(temp, "%d %*s\n", (vertexId_t*)&vid);
         vertices[i] = vid;
+        written = fgets(temp, MAX_CHARS, fp);
+        i += 1;
     }
     fclose (fp);
 
@@ -153,15 +168,28 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* part
     // write out relabeled graph to file
     ofstream fout;
     fout.open(relabeledGraphPath);
-    fout << "# Nodes: " << vertices.size() << " " << "Edges: " << counter << "\n";
-    vertexId_t relabeledSrc, relabeledDest; // shouldn't be using vertexId_t here
+
+    bool snap_output = (out_type == NULL || strcmp(out_type, "snap") == 0);
+    if (snap_output) {
+        printf("Outputting new SNAP graph\n");
+        fout << "# Nodes: " << vertices.size() << " " << "Edges: " << ne << "\n";
+    } else {
+        printf("Outputting new matrix market graph\n");
+        fout << vertices.size() << " " <<  vertices.size() << " " << ne << "\n";
+    }
+    vertexId_t relabeledSrc, relabeledDest;
     for (vertexId_t i=0; i<counter; i++) {
         relabeledSrc = relabel_map[src[i]];
         relabeledDest = relabel_map[dest[i]];
-        fout << relabeledSrc << " " << relabeledDest << "\n";
+        if (snap_output) {
+            fout << relabeledSrc << " " << relabeledDest << "\n";
+        } else {
+            fout << relabeledSrc+1 << " " << relabeledDest+1 << "\n";
+        }
     }
     fout.close();
 
+    // off-by-1 if output is mtx
     if (mappingPath != NULL) {
         fout.open(mappingPath);
         fout << "New ID Old ID\n";
@@ -184,13 +212,14 @@ int main(const int argc, char *argv[])
     char *output_graph_path = argv[2];
     char *partition_info_path = getOption("-p", argc, argv);
     char *mapping_path = getOption("-m", argc, argv);
+    char *out_type = getOption("-o", argc, argv);
 
     clock_t diff;
     clock_t start = clock();
     if (partition_info_path != NULL) {
-        relabelGraphSNAP(input_graph_path, output_graph_path, partition_info_path, mapping_path);
+        relabelGraphSNAP(input_graph_path, output_graph_path, out_type, partition_info_path, mapping_path);
     } else {
-        readGraphSNAP(input_graph_path, output_graph_path, mapping_path);
+        readGraphSNAP(input_graph_path, output_graph_path, out_type, mapping_path);
     }
     diff = clock() - start;
     int msec = diff * 1000 / CLOCKS_PER_SEC;
