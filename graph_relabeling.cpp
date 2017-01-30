@@ -23,6 +23,19 @@ char* getOption(const char* option, int argc, char **argv) {
   return NULL;
 }
 
+bool hasOption(const char* option, int argc, char **argv) {
+  for (int i = 1; i < argc; i++) {
+      if (strcmp(argv[i], option) == 0)
+          return true;
+  }
+  return false;
+}
+
+// Driver function to sort the vector elements by second element of pairs
+bool sortBySecDesc(const pair<int,int> &a, const pair<int,int> &b) {
+    return (a.second > b.second);
+}
+
 void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* out_type, char* mappingPath) {
     vertexId_t nv,*src,*dest;
     length_t   ne;
@@ -201,6 +214,59 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* out_
     free(dest);
 }
 
+// assumes SNAP input
+void writeDegreesFile(char* inputGraphPath, char* outputPath) {
+    vertexId_t nv;
+    length_t ne;
+    nv = ne = -1;
+    const int MAX_CHARS = 1000;
+    char temp[MAX_CHARS];
+    char *written;
+    FILE *fp = fopen(inputGraphPath, "r");
+
+    // scan for SNAP header comment
+    while (nv == -1 || ne == -1) {
+        fgets(temp, MAX_CHARS, fp);
+        sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
+    }
+    written = fgets(temp, MAX_CHARS, fp);
+    while (written != NULL && *temp == '#') { // skip any other comments
+        written = fgets(temp, MAX_CHARS, fp);
+    }
+
+    length_t counter = 0;
+    vector<int> degrees(nv, 0);
+    vertexId_t srctemp,desttemp;
+
+    // read in edges
+    while(counter<ne)
+    {
+        sscanf(temp, "%d %d\n", (vertexId_t*)&srctemp, (vertexId_t*)&desttemp);
+        degrees[srctemp]++;
+        degrees[desttemp]++;
+        counter++;
+        fgets(temp, MAX_CHARS, fp);
+    }
+    fclose (fp);
+
+    // count degrees
+    vector<pair<vertexId_t, int>> vid_degree_pairs(nv);
+    for (int i=0; i<nv; i++) {
+        vid_degree_pairs[i] = make_pair(i, degrees[i]);
+    }
+
+    sort(vid_degree_pairs.begin(), vid_degree_pairs.end(), sortBySecDesc);
+
+    // write out degrees file
+    ofstream fout;
+    fout.open(outputPath);
+    for (vertexId_t i=0; i<nv; i++) {
+        fout << vid_degree_pairs[i].first << " " << vid_degree_pairs[i].second << "\n";
+    }
+    fout.close();
+    
+}
+
 int main(const int argc, char *argv[])
 {
     if (argc < 3) {
@@ -212,11 +278,14 @@ int main(const int argc, char *argv[])
     char *partition_info_path = getOption("-p", argc, argv);
     char *mapping_path = getOption("-m", argc, argv);
     char *out_type = getOption("-o", argc, argv);
+    bool get_degrees = hasOption("--degrees", argc, argv);
 
     clock_t diff;
     clock_t start = clock();
     if (partition_info_path != NULL) {
         relabelGraphSNAP(input_graph_path, output_graph_path, out_type, partition_info_path, mapping_path);
+    } else if (get_degrees) {
+        writeDegreesFile(input_graph_path, output_graph_path);
     } else {
         readGraphSNAP(input_graph_path, output_graph_path, out_type, mapping_path);
     }
