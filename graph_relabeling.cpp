@@ -80,6 +80,8 @@ void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mapping
         fgets(temp, MAX_CHARS, fp);
     }
     fclose (fp);
+    assert(counter == ne);
+    assert(vertex_set.size() == nv);
 
     // get graph vertices, sorted
     vector<vertexId_t> vertices(vertex_set.begin(), vertex_set.end());
@@ -113,6 +115,8 @@ void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mapping
     for (vertexId_t i=0; i<counter; i++) {
         relabeledSrc = relabel_map[src[i]];
         relabeledDest = relabel_map[dest[i]];
+        assert(relabeledSrc >= 0 && relabeledSrc < nv);
+        assert(relabeledDest >= 0 && relabeledDest < nv);
         if (isSnap) {
             fout << relabeledSrc << " " << relabeledDest << "\n";
         } else {
@@ -282,6 +286,8 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* part
     for (vertexId_t i=0; i<counter; i++) {
         relabeledSrc = relabel_map[src[i]];
         relabeledDest = relabel_map[dest[i]];
+        assert(relabeledSrc >= 0 && relabeledSrc < nv);
+        assert(relabeledDest >= 0 && relabeledDest < nv);
         if (isSnap) {
             fout << relabeledSrc << " " << relabeledDest << "\n";
         } else {
