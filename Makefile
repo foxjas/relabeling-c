@@ -1,8 +1,16 @@
 CC=g++
-FLAGS=-std=c++11 -Wall
+CFLAGS=-std=c++11 -Wall
+OBJ = utils.o graph_relabeling.o
+DEPS = utils.h
+EXEC=graph_relabeling
 
-all:
-	$(CC) $(FLAGS) graph_relabeling.cpp -o graph_relabeling
+all: $(EXEC)
+
+$(EXEC): $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $^
+
+%.o: %.c $(DEPS)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm graph_relabeling
+	rm -f $(OBJ) $(EXEC)

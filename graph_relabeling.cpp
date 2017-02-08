@@ -11,36 +11,12 @@
 #include <vector>
 #include <algorithm>
 
+#include "utils.h"
+
 typedef int32_t vertexId_t;
 typedef vertexId_t length_t;
 
 using namespace std;
-
-char* getOption(const char* option, int argc, char **argv) {
-  for (int i = 1; i < argc-1; i++) {
-      if (strcmp(argv[i], option) == 0)
-          return argv[i+1];
-  }
-  return NULL;
-}
-
-bool hasOption(const char* option, int argc, char **argv) {
-  for (int i = 1; i < argc; i++) {
-      if (strcmp(argv[i], option) == 0)
-          return true;
-  }
-  return false;
-}
-
-// Driver function to sort the vector elements by second element of pairs, ascending order
-bool sortBySecAsec(const pair<int,int> &a, const pair<int,int> &b) {
-    return (a.second < b.second);
-}
-
-// Driver function to sort the vector elements by second element of pairs, descending order
-bool sortBySecDesc(const pair<int,int> &a, const pair<int,int> &b) {
-    return (a.second > b.second);
-}
 
 void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath) {
     vertexId_t nv,*src,*dest;
@@ -157,7 +133,7 @@ vector<vertexId_t> relabelVerticesFromInfomap(FILE *com_fp, int nv) {
 }
 
 vector<vertexId_t> relabelVerticesFromLouvain(FILE *com_fp, int nv) {
-    vector<pair<vertexId_t, int>> vertex_labels;
+    vector<pair<vertexId_t, int> > vertex_labels;
     vertex_labels.reserve(nv);
     vertexId_t a_prev = -1;
     vertexId_t a;
@@ -199,7 +175,7 @@ vector<vertexId_t> relabelVerticesFromLouvain(FILE *com_fp, int nv) {
 
     vector<vertexId_t> final;
     final.reserve(nv);
-    for (vector<pair<vertexId_t, int>>::iterator pair = vertex_labels.begin(); pair != vertex_labels.end(); pair++) {
+    for (vector<pair<vertexId_t, int> >::iterator pair = vertex_labels.begin(); pair != vertex_labels.end(); pair++) {
         final.push_back((*pair).first);
     }
     assert(final.size() == nv);
@@ -309,7 +285,6 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* part
     free(dest);
 }
 
-// assumes SNAP input
 void writeDegreesFile(char* inputGraphPath, char* outputPath) {
     vertexId_t nv;
     length_t ne;
@@ -345,7 +320,7 @@ void writeDegreesFile(char* inputGraphPath, char* outputPath) {
     fclose (fp);
 
     // count degrees
-    vector<pair<vertexId_t, int>> vid_degree_pairs(nv);
+    vector<pair<vertexId_t, int> > vid_degree_pairs(nv);
     for (int i=0; i<nv; i++) {
         vid_degree_pairs[i] = make_pair(i, degrees[i]);
     }
@@ -359,8 +334,9 @@ void writeDegreesFile(char* inputGraphPath, char* outputPath) {
         fout << vid_degree_pairs[i].first << " " << vid_degree_pairs[i].second << "\n";
     }
     fout.close();
-    
 }
+
+
 
 int main(const int argc, char *argv[])
 {
