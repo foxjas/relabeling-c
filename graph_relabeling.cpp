@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <iostream>
 #include <fstream>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -336,7 +337,51 @@ void writeDegreesFile(char* inputGraphPath, char* outputPath) {
     fout.close();
 }
 
+void writeCommunityStats(char *inputPath, char *outputPath) {
+    int nComs=0;
+    double avgComSize=0;
+    unordered_map<int,int> com_to_size;
+    vertexId_t a_prev = -1;
+    vertexId_t a;
+    int b;
+    char *written;
+    const int MAX_CHARS = 100;
+    char temp[MAX_CHARS];
+    
+    int counter = 0;
+    FILE *fp = fopen(inputPath, "r");
+    // read in (vertex id, community id) pairs
+    written = fgets(temp, MAX_CHARS, fp);
+    sscanf(temp, "%d %d\n", (vertexId_t*)&a, (vertexId_t*)&b);
+    while((written != NULL) && a > a_prev) {
+        com_to_size[b]+=1;
+        counter += 1;
+        a_prev = a;
+        written = fgets(temp, MAX_CHARS, fp);
+        sscanf(temp, "%d %d\n", (vertexId_t*)&a, (vertexId_t*)&b);
+    }
+    fclose (fp);
+    printf("Counter: %d\n", counter);
 
+    nComs = com_to_size.size();
+    map<int,int> size_to_count;
+    int comSize;
+    for (unordered_map<int,int>::iterator element = com_to_size.begin(); element != com_to_size.end(); element++) {
+        comSize = element->second;
+        size_to_count[comSize] += 1;
+        avgComSize += comSize;
+    }
+    avgComSize /= nComs;
+
+    ofstream fout;
+    fout.open(outputPath);
+    fout << "# Number of communities: " << nComs << endl;
+    fout << "# Average community size: " << avgComSize << endl;
+    for (map<int,int>::iterator element = size_to_count.begin(); element != size_to_count.end(); element++) {
+        fout << element->first << " " << element->second << "\n";
+    }
+    fout.close();
+}
 
 int main(const int argc, char *argv[])
 {
@@ -349,6 +394,7 @@ int main(const int argc, char *argv[])
     char *partition_info_path = getOption("-p", argc, argv);
     char *mapping_path = getOption("-m", argc, argv);
     bool get_degrees = hasOption("--degrees", argc, argv);
+    bool get_com_stats = hasOption("--community", argc, argv);
 
     clock_t diff;
     clock_t start = clock();
@@ -356,6 +402,8 @@ int main(const int argc, char *argv[])
         relabelGraphSNAP(input_graph_path, output_graph_path, partition_info_path, mapping_path);
     } else if (get_degrees) {
         writeDegreesFile(input_graph_path, output_graph_path);
+    } else if (get_com_stats) {
+        writeCommunityStats(input_graph_path, output_graph_path);
     } else {
         readGraphSNAP(input_graph_path, output_graph_path, mapping_path);
     }
