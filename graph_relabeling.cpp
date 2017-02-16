@@ -14,9 +14,6 @@
 
 #include "utils.h"
 
-typedef int32_t vertexId_t;
-typedef vertexId_t length_t;
-
 using namespace std;
 
 void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath) {
@@ -286,103 +283,6 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* part
     free(dest);
 }
 
-void writeDegreesFile(char* inputGraphPath, char* outputPath) {
-    vertexId_t nv;
-    length_t ne;
-    nv = ne = -1;
-    const int MAX_CHARS = 1000;
-    char temp[MAX_CHARS];
-    char *written;
-    FILE *fp = fopen(inputGraphPath, "r");
-
-    // scan for SNAP header comment
-    while (nv == -1 || ne == -1) {
-        fgets(temp, MAX_CHARS, fp);
-        sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
-    }
-    written = fgets(temp, MAX_CHARS, fp);
-    while (written != NULL && *temp == '#') { // skip any other comments
-        written = fgets(temp, MAX_CHARS, fp);
-    }
-
-    length_t counter = 0;
-    vector<int> degrees(nv, 0);
-    vertexId_t srctemp,desttemp;
-
-    // read in edges
-    while(counter<ne)
-    {
-        sscanf(temp, "%d %d\n", (vertexId_t*)&srctemp, (vertexId_t*)&desttemp);
-        degrees[srctemp]++;
-        degrees[desttemp]++;
-        counter++;
-        fgets(temp, MAX_CHARS, fp);
-    }
-    fclose (fp);
-
-    // count degrees
-    vector<pair<vertexId_t, int> > vid_degree_pairs(nv);
-    for (int i=0; i<nv; i++) {
-        vid_degree_pairs[i] = make_pair(i, degrees[i]);
-    }
-
-    sort(vid_degree_pairs.begin(), vid_degree_pairs.end(), sortBySecDesc);
-
-    // write out degrees file
-    ofstream fout;
-    fout.open(outputPath);
-    for (vertexId_t i=0; i<nv; i++) {
-        fout << vid_degree_pairs[i].first << " " << vid_degree_pairs[i].second << "\n";
-    }
-    fout.close();
-}
-
-void writeCommunityStats(char *inputPath, char *outputPath) {
-    int nComs=0;
-    double avgComSize=0;
-    unordered_map<int,int> com_to_size;
-    vertexId_t a_prev = -1;
-    vertexId_t a;
-    int b;
-    char *written;
-    const int MAX_CHARS = 100;
-    char temp[MAX_CHARS];
-    
-    int counter = 0;
-    FILE *fp = fopen(inputPath, "r");
-    // read in (vertex id, community id) pairs
-    written = fgets(temp, MAX_CHARS, fp);
-    sscanf(temp, "%d %d\n", (vertexId_t*)&a, (vertexId_t*)&b);
-    while((written != NULL) && a > a_prev) {
-        com_to_size[b]+=1;
-        counter += 1;
-        a_prev = a;
-        written = fgets(temp, MAX_CHARS, fp);
-        sscanf(temp, "%d %d\n", (vertexId_t*)&a, (vertexId_t*)&b);
-    }
-    fclose (fp);
-    printf("Counter: %d\n", counter);
-
-    nComs = com_to_size.size();
-    map<int,int> size_to_count;
-    int comSize;
-    for (unordered_map<int,int>::iterator element = com_to_size.begin(); element != com_to_size.end(); element++) {
-        comSize = element->second;
-        size_to_count[comSize] += 1;
-        avgComSize += comSize;
-    }
-    avgComSize /= nComs;
-
-    ofstream fout;
-    fout.open(outputPath);
-    fout << "# Number of communities: " << nComs << endl;
-    fout << "# Average community size: " << avgComSize << endl;
-    for (map<int,int>::iterator element = size_to_count.begin(); element != size_to_count.end(); element++) {
-        fout << element->first << " " << element->second << "\n";
-    }
-    fout.close();
-}
-
 int main(const int argc, char *argv[])
 {
     if (argc < 3) {
@@ -395,6 +295,7 @@ int main(const int argc, char *argv[])
     char *mapping_path = getOption("-m", argc, argv);
     bool get_degrees = hasOption("--degrees", argc, argv);
     bool get_com_stats = hasOption("--community", argc, argv);
+    bool edge_dups = hasOption("--duplicates", argc, argv);
 
     clock_t diff;
     clock_t start = clock();
@@ -404,6 +305,8 @@ int main(const int argc, char *argv[])
         writeDegreesFile(input_graph_path, output_graph_path);
     } else if (get_com_stats) {
         writeCommunityStats(input_graph_path, output_graph_path);
+    } else if (edge_dups) {
+        printf("Duplicated eges: %d\n", checkDuplicateEdges(input_graph_path));
     } else {
         readGraphSNAP(input_graph_path, output_graph_path, mapping_path);
     }
