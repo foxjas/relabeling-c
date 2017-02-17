@@ -16,7 +16,7 @@
 
 using namespace std;
 
-void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath, bool undirected) {
+void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath, bool undirected) {
     vertexId_t nv = -1;
     length_t ne = -1;
     const int MAX_CHARS = 1000;
@@ -24,18 +24,31 @@ void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mapping
     char *written;
     FILE *fp = fopen(inputGraphPath, "r");
 
-    // scan for SNAP header comment
-    written = fgets(temp, MAX_CHARS, fp);
-    while ((nv == -1 || ne == -1) && written != NULL) {
-    	sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
-            written = fgets(temp, MAX_CHARS, fp);
-    }
-    if ((nv == -1 || ne == -1) && written == NULL) {
-        fprintf(stderr, "SNAP input file is missing header info\n");
-        exit(-1);
-    }
-    while (written != NULL && *temp == '#') { // skip any other comments
+    string inFileName(inputGraphPath);
+    bool isSnapInput = inFileName.find(".txt")==std::string::npos?false:true;
+    bool isMarketInput = inFileName.find(".mtx")==std::string::npos?false:true;
+
+    // process input file header
+    if (isSnapInput) {
         written = fgets(temp, MAX_CHARS, fp);
+        while ((nv == -1 || ne == -1) && written != NULL) {
+            sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
+            written = fgets(temp, MAX_CHARS, fp);
+        }
+        if ((nv == -1 || ne == -1) && written == NULL) {
+            fprintf(stderr, "SNAP input file is missing header info\n");
+            exit(-1);
+        }
+        while (written != NULL && *temp == '#') { // skip any other comments
+            written = fgets(temp, MAX_CHARS, fp);
+        }
+    } else if (isMarketInput) {
+        while (fgets(temp, MAX_CHARS, fp) && *temp == '%'); // skip comments
+        sscanf(temp, "%d %*s %d\n", &nv,&ne); // read Matrix Market header
+        fgets(temp, MAX_CHARS, fp);
+    } else {
+        fprintf(stderr, "Could not recognize input file format\n");
+        exit(-1);
     }
 
     vector<pair<vertexId_t, vertexId_t> >  edges(ne);
@@ -47,6 +60,10 @@ void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mapping
     while(counter<ne)
     {
         sscanf(temp, "%d %d\n", (vertexId_t*)&srctemp, (vertexId_t*)&desttemp);
+        if (isMarketInput) {
+            srctemp-=1;
+            desttemp-=1;
+        }
         if (undirected) {
             edges[counter]= make_pair(min(srctemp, desttemp), max(srctemp, desttemp));
         } else {
@@ -100,12 +117,12 @@ void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mapping
     ofstream fout;
     fout.open(relabeledGraphPath);
     string outFileName(relabeledGraphPath);
-    bool isSnap = outFileName.find(".txt")==std::string::npos?false:true;
-    bool isMarket = outFileName.find(".mtx")==std::string::npos?false:true;
-    if (isSnap) {
+    bool isSnapOutput = outFileName.find(".txt")==std::string::npos?false:true;
+    bool isMarketOutput = outFileName.find(".mtx")==std::string::npos?false:true;
+    if (isSnapOutput) {
         printf("Outputting new SNAP graph\n");
         fout << "# Nodes: " << vertices.size() << " " << "Edges: " << ne << "\n";
-    } else if (isMarket) {
+    } else if (isMarketOutput) {
         printf("Outputting new matrix market graph\n");
         fout << vertices.size() << " " <<  vertices.size() << " " << ne << "\n";
     } else {
@@ -119,7 +136,7 @@ void readGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* mapping
         relabeledDest = relabel_map[edges_final[i].second];
         // assert(relabeledSrc >= 0 && relabeledSrc < nv);
         // assert(relabeledDest >= 0 && relabeledDest < nv);
-        if (isSnap) {
+        if (isSnapOutput) {
             fout << relabeledSrc << " " << relabeledDest << "\n";
         } else {
             fout << relabeledSrc+1 << " " << relabeledDest+1 << "\n";
@@ -207,7 +224,7 @@ vector<vertexId_t> relabelVerticesFromLouvain(FILE *com_fp, int nv) {
     return final;
 }
 
-void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* partitionInfoPath, char* mappingPath) {
+void relabelGraph(char* inputGraphPath, char* relabeledGraphPath, char* partitionInfoPath, char* mappingPath) {
     vertexId_t nv,*src,*dest;
     length_t   ne;
     nv = ne = -1;
@@ -216,15 +233,31 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* part
     char *written;
     FILE *fp = fopen(inputGraphPath, "r");
 
-    // scan for SNAP header comment
-    while (nv == -1 || ne == -1) {
-        fgets(temp, MAX_CHARS, fp);
-        sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
-    }
+    string inFileName(inputGraphPath);
+    bool isSnapInput = inFileName.find(".txt")==std::string::npos?false:true;
+    bool isMarketInput = inFileName.find(".mtx")==std::string::npos?false:true;
 
-    written = fgets(temp, MAX_CHARS, fp);
-    while (written != NULL && *temp == '#') { // skip any other comments
+    // process input file header
+    if (isSnapInput) {
         written = fgets(temp, MAX_CHARS, fp);
+        while ((nv == -1 || ne == -1) && written != NULL) {
+            sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
+            written = fgets(temp, MAX_CHARS, fp);
+        }
+        if ((nv == -1 || ne == -1) && written == NULL) {
+            fprintf(stderr, "SNAP input file is missing header info\n");
+            exit(-1);
+        }
+        while (written != NULL && *temp == '#') { // skip any other comments
+            written = fgets(temp, MAX_CHARS, fp);
+        }
+    } else if (isMarketInput) {
+        while (fgets(temp, MAX_CHARS, fp) && *temp == '%'); // skip comments
+        sscanf(temp, "%d %*s %d\n", &nv,&ne); // read Matrix Market header
+        fgets(temp, MAX_CHARS, fp);
+    } else {
+        fprintf(stderr, "Could not recognize input file format\n");
+        exit(-1);
     }
 
     src = (vertexId_t *) malloc ((ne ) * sizeof (vertexId_t));
@@ -236,6 +269,10 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* part
     while(counter<ne)
     {
         sscanf(temp, "%d %d\n", (vertexId_t*)&srctemp, (vertexId_t*)&desttemp);
+        if (isMarketInput) {
+            srctemp -= 1;
+            desttemp -= 1;
+        }
         src[counter]=srctemp;
         dest[counter]=desttemp;
         counter++;
@@ -270,12 +307,12 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* part
     ofstream fout;
     fout.open(relabeledGraphPath);
     string outFileName(relabeledGraphPath);
-    bool isSnap = outFileName.find(".txt")==std::string::npos?false:true;
-    bool isMarket = outFileName.find(".mtx")==std::string::npos?false:true;
-    if (isSnap) {
+    bool isSnapOutput = outFileName.find(".txt")==std::string::npos?false:true;
+    bool isMarketOutput = outFileName.find(".mtx")==std::string::npos?false:true;
+    if (isSnapOutput) {
         printf("Outputting new SNAP graph\n");
         fout << "# Nodes: " << vertices.size() << " " << "Edges: " << ne << "\n";
-    } else if (isMarket) {
+    } else if (isMarketOutput) {
         printf("Outputting new matrix market graph\n");
         fout << vertices.size() << " " <<  vertices.size() << " " << ne << "\n";
     } else {
@@ -289,7 +326,7 @@ void relabelGraphSNAP(char* inputGraphPath, char* relabeledGraphPath, char* part
         relabeledDest = relabel_map[dest[i]];
         assert(relabeledSrc >= 0 && relabeledSrc < nv);
         assert(relabeledDest >= 0 && relabeledDest < nv);
-        if (isSnap) {
+        if (isSnapOutput) {
             fout << relabeledSrc << " " << relabeledDest << "\n";
         } else {
             fout << relabeledSrc+1 << " " << relabeledDest+1 << "\n";
@@ -328,7 +365,7 @@ int main(const int argc, char *argv[])
     clock_t diff;
     clock_t start = clock();
     if (partition_info_path != NULL) {
-        relabelGraphSNAP(input_graph_path, output_graph_path, partition_info_path, mapping_path);
+        relabelGraph(input_graph_path, output_graph_path, partition_info_path, mapping_path);
     } else if (get_degrees) {
         writeDegreesFile(input_graph_path, output_graph_path);
     } else if (get_com_stats) {
@@ -336,7 +373,7 @@ int main(const int argc, char *argv[])
     } else if (edge_dups) {
         printf("Duplicated eges: %d\n", checkDuplicateEdges(input_graph_path));
     } else {
-        readGraphSNAP(input_graph_path, output_graph_path, mapping_path, undirected);
+        readGraph(input_graph_path, output_graph_path, mapping_path, undirected);
     }
     diff = clock() - start;
     int msec = diff * 1000 / CLOCKS_PER_SEC;
