@@ -75,9 +75,8 @@ void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath
         fgets(temp, MAX_CHARS, fp);
     }
     fclose (fp);
-    assert(counter == ne);
-    assert(vertex_set.size() == nv);
-    printf("Original input: %d vertices, %d edges\n", nv, ne);
+    printf("Original input: %d vertices, %d edges\n", vertex_set.size(), edges.size());
+    assert(edges.size() == ne);
 
     // convert to undirected edges, and remove potential duplicates
     vector<pair<vertexId_t, vertexId_t> > edges_final;
