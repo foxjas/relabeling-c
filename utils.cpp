@@ -20,6 +20,14 @@ char* getOption(const char* option, int argc, char **argv) {
   return NULL;
 }
 
+int getIntOption(const char* option, int argc, char **argv) {
+  for (int i = 1; i < argc-1; i++) {
+      if (strcmp(argv[i], option) == 0)
+          return atoi(argv[i+1]);
+  }
+  return 0;
+}
+
 bool hasOption(const char* option, int argc, char **argv) {
   for (int i = 1; i < argc; i++) {
       if (strcmp(argv[i], option) == 0)

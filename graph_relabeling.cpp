@@ -16,7 +16,7 @@
 
 using namespace std;
 
-void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath, bool undirected) {
+void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath, int undirected) {
     vertexId_t nv = -1;
     length_t ne = -1;
     const int MAX_CHARS = 1000;
@@ -94,7 +94,9 @@ void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath
                 duplicates += 1;
             } else {
                 edges_final.push_back(*pair);
-                edges_final.push_back(make_pair(second, first));
+                if (undirected == 2) {
+                    edges_final.push_back(make_pair(second, first));
+                }
             }
             prev_first = first;
             prev_second = second;
@@ -359,8 +361,8 @@ int main(const int argc, char *argv[])
     char *mapping_path = getOption("-m", argc, argv);
     bool get_degrees = hasOption("--degrees", argc, argv);
     bool get_com_stats = hasOption("--community", argc, argv);
-    bool undirected = hasOption("--undirected", argc, argv);
     bool edge_dups = hasOption("--duplicates", argc, argv);
+    int undirected = getIntOption("--undirected", argc, argv);
 
     clock_t diff;
     clock_t start = clock();
