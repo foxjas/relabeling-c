@@ -67,14 +67,30 @@ void writeDegreesFile(char* inputGraphPath, char* outputPath) {
     char *written;
     FILE *fp = fopen(inputGraphPath, "r");
 
-    // scan for SNAP header comment
-    while (nv == -1 || ne == -1) {
-        fgets(temp, MAX_CHARS, fp);
-        sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
-    }
-    written = fgets(temp, MAX_CHARS, fp);
-    while (written != NULL && *temp == '#') { // skip any other comments
+    string inFileName(inputGraphPath);
+    bool isSnapInput = inFileName.find(".txt")==std::string::npos?false:true;
+    bool isMarketInput = inFileName.find(".mtx")==std::string::npos?false:true;
+
+    if (isSnapInput) {
         written = fgets(temp, MAX_CHARS, fp);
+        while ((nv == -1 || ne == -1) && written != NULL) {
+            sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
+            written = fgets(temp, MAX_CHARS, fp);
+        }
+        if ((nv == -1 || ne == -1) && written == NULL) {
+            fprintf(stderr, "SNAP input file is missing header info\n");
+            exit(-1);
+        }
+        while (written != NULL && *temp == '#') { // skip any other comments
+            written = fgets(temp, MAX_CHARS, fp);
+        }
+    } else if (isMarketInput) {
+        while (fgets(temp, MAX_CHARS, fp) && *temp == '%'); // skip comments
+        sscanf(temp, "%d %*s %d\n", &nv,&ne); // read Matrix Market header
+        fgets(temp, MAX_CHARS, fp);
+    } else {
+        fprintf(stderr, "Could not recognize input file format\n");
+        exit(-1);
     }
 
     length_t counter = 0;
@@ -85,6 +101,10 @@ void writeDegreesFile(char* inputGraphPath, char* outputPath) {
     while(counter<ne)
     {
         sscanf(temp, "%d %d\n", (vertexId_t*)&srctemp, (vertexId_t*)&desttemp);
+        if (isMarketInput) {
+            srctemp -= 1;
+            desttemp -= 1;
+        }
         degrees[srctemp]++;
         degrees[desttemp]++;
         counter++;
@@ -161,15 +181,30 @@ int checkDuplicateEdges(char* inputGraphPath) {
     char *written;
     FILE *fp = fopen(inputGraphPath, "r");
 
-    // scan for SNAP header comment
-    while (nv == -1 || ne == -1) {
-        fgets(temp, MAX_CHARS, fp);
-        sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
-    }
+    string inFileName(inputGraphPath);
+    bool isSnapInput = inFileName.find(".txt")==std::string::npos?false:true;
+    bool isMarketInput = inFileName.find(".mtx")==std::string::npos?false:true;
 
-    written = fgets(temp, MAX_CHARS, fp);
-    while (written != NULL && *temp == '#') { // skip any other comments
+    if (isSnapInput) {
         written = fgets(temp, MAX_CHARS, fp);
+        while ((nv == -1 || ne == -1) && written != NULL) {
+            sscanf(temp, "# Nodes: %d Edges: %d\n", &nv,&ne);
+            written = fgets(temp, MAX_CHARS, fp);
+        }
+        if ((nv == -1 || ne == -1) && written == NULL) {
+            fprintf(stderr, "SNAP input file is missing header info\n");
+            exit(-1);
+        }
+        while (written != NULL && *temp == '#') { // skip any other comments
+            written = fgets(temp, MAX_CHARS, fp);
+        }
+    } else if (isMarketInput) {
+        while (fgets(temp, MAX_CHARS, fp) && *temp == '%'); // skip comments
+        sscanf(temp, "%d %*s %d\n", &nv,&ne); // read Matrix Market header
+        fgets(temp, MAX_CHARS, fp);
+    } else {
+        fprintf(stderr, "Could not recognize input file format\n");
+        exit(-1);
     }
 
     vector<pair<int, int> > edges(ne);
