@@ -106,7 +106,10 @@ void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath
         edges_final = edges;
     }
 
+    vector<pair<vertexId_t, vertexId_t> >().swap(edges); // deallocates edges
+
     // sort graph vertices and use to create relabeling map
+    nv = vertex_set.size();
     vector<vertexId_t> vertices(vertex_set.begin(), vertex_set.end());
     sort(vertices.begin(), vertices.end());
     unordered_map<vertexId_t, vertexId_t> relabel_map;

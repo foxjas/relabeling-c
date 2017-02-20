@@ -66,6 +66,9 @@ bool sortByPairDesc(const std::pair<int,int> &a, const std::pair<int,int> &b) {
     }
 }
 
+/**
+ * Assumes undirected edges
+ */ 
 void writeDegreesFile(char* inputGraphPath, char* outputPath) {
     vertexId_t nv;
     length_t ne;
