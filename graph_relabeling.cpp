@@ -159,8 +159,9 @@ void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath
     printf("Processed %lu vertices, %d edges\n", vertices.size(), ne);
 }
 
-vector<vertexId_t> relabelVerticesFromInfomap(FILE *com_fp, int nv) {
+vector<vertexId_t> relabelVerticesFromInfomap(char *fpath, int nv) {
     // read in community-partitioned vertices
+    FILE *com_fp = fopen(fpath, "r");
     const int MAX_CHARS = 1000;
     char temp[MAX_CHARS];
     vertexId_t vid, i=0;
@@ -175,10 +176,11 @@ vector<vertexId_t> relabelVerticesFromInfomap(FILE *com_fp, int nv) {
         written = fgets(temp, MAX_CHARS, com_fp);
         i += 1;
     }
+    fclose(com_fp);
     return vertices;
 }
 
-vector<vertexId_t> relabelVerticesFromLouvain(FILE *com_fp, int nv) {
+vector<vertexId_t> relabelVerticesFromLouvain(char *fpath, int nv) {
     vector<pair<vertexId_t, int> > vertex_labels;
     vertex_labels.reserve(nv);
     vertexId_t a_prev = -1;
@@ -187,6 +189,7 @@ vector<vertexId_t> relabelVerticesFromLouvain(FILE *com_fp, int nv) {
     char *written;
     const int MAX_CHARS = 100;
     char temp[MAX_CHARS];
+    FILE *com_fp = fopen(fpath, "r");
     
     // read in initial (vertex id, community id) pairs
     written = fgets(temp, MAX_CHARS, com_fp);
@@ -224,6 +227,7 @@ vector<vertexId_t> relabelVerticesFromLouvain(FILE *com_fp, int nv) {
     for (vector<pair<vertexId_t, int> >::iterator pair = vertex_labels.begin(); pair != vertex_labels.end(); pair++) {
         final.push_back((*pair).first);
     }
+    fclose(com_fp);
     assert(final.size() == nv);
     return final;
 }
@@ -285,21 +289,19 @@ void relabelGraph(char* inputGraphPath, char* relabeledGraphPath, char* partitio
     fclose (fp);
 
     vector<vertexId_t> vertices;
-    fp = fopen(partitionInfoPath, "r");
     string comFileName(partitionInfoPath);
     bool isInfomap = comFileName.find(".clu")==std::string::npos?false:true;
     bool isLouvain = comFileName.find(".tree")==std::string::npos?false:true;
     // read in community-partitioned vertices
     if (isInfomap) {
-        vertices = relabelVerticesFromInfomap(fp, nv);
+        vertices = relabelVerticesFromInfomap(partitionInfoPath, nv);
     } else if (isLouvain) {
-        vertices = relabelVerticesFromLouvain(fp, nv);
+        vertices = relabelVerticesFromLouvain(partitionInfoPath, nv);
     } else {
         /** Error out */
         cerr << "Error: could not recognize provided community label file" << endl;
         exit(1);
     }
-    fclose (fp);
 
     // create relabeling map
     unordered_map<vertexId_t, vertexId_t> relabel_map; /** NOTE: could replace this map with array */
