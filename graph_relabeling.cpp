@@ -180,6 +180,21 @@ vector<vertexId_t> relabelVerticesFromInfomap(char *fpath, int nv) {
     return vertices;
 }
 
+vector<vertexId_t> relabelVerticesFromSCD(char *fpath, int nv) {
+
+    ifstream inFile;
+    inFile.open(fpath);
+    vertexId_t vid, i=0;
+    vector<vertexId_t> vertices(nv);
+
+    while (inFile >> vid) {
+        vertices[i] = vid;
+        i += 1;
+    }
+    printf("i: %d\n", i);
+    return vertices;
+}
+
 vector<vertexId_t> relabelVerticesFromLouvain(char *fpath, int nv) {
     vector<pair<vertexId_t, int> > vertex_labels;
     vertex_labels.reserve(nv);
@@ -292,11 +307,14 @@ void relabelGraph(char* inputGraphPath, char* relabeledGraphPath, char* partitio
     string comFileName(partitionInfoPath);
     bool isInfomap = comFileName.find(".clu")==std::string::npos?false:true;
     bool isLouvain = comFileName.find(".tree")==std::string::npos?false:true;
+    bool isSCD = comFileName.find(".dat")==std::string::npos?false:true;
     // read in community-partitioned vertices
     if (isInfomap) {
         vertices = relabelVerticesFromInfomap(partitionInfoPath, nv);
     } else if (isLouvain) {
         vertices = relabelVerticesFromLouvain(partitionInfoPath, nv);
+    } else if (isSCD) {
+        vertices = relabelVerticesFromSCD(partitionInfoPath, nv);
     } else {
         /** Error out */
         cerr << "Error: could not recognize provided community label file" << endl;
