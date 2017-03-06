@@ -128,6 +128,7 @@ void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath
         fout << "# Nodes: " << vertices.size() << " " << "Edges: " << ne << "\n";
     } else if (isMarketOutput) {
         printf("Outputting new matrix market graph\n");
+        fout << "\%\%MatrixMarket matrix coordinate pattern symmetric\n";
         fout << vertices.size() << " " <<  vertices.size() << " " << ne << "\n";
     } else {
         cout << "Unrecognized output graph file type: defaulting to SNAP .txt" << endl;
@@ -191,7 +192,6 @@ vector<vertexId_t> relabelVerticesFromSCD(char *fpath, int nv) {
         vertices[i] = vid;
         i += 1;
     }
-    printf("i: %d\n", i);
     return vertices;
 }
 
@@ -338,6 +338,7 @@ void relabelGraph(char* inputGraphPath, char* relabeledGraphPath, char* partitio
         fout << "# Nodes: " << vertices.size() << " " << "Edges: " << ne << "\n";
     } else if (isMarketOutput) {
         printf("Outputting new matrix market graph\n");
+        fout << "\%\%MatrixMarket matrix coordinate pattern symmetric\n";
         fout << vertices.size() << " " <<  vertices.size() << " " << ne << "\n";
     } else {
         cout << "Unrecognized output graph file type: defaulting to SNAP .txt" << endl;
