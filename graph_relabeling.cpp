@@ -16,7 +16,9 @@
 
 using namespace std;
 
-void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath, int undirected) {
+const unsigned int RAND_SEED = 32894;
+
+void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath, int undirected, bool shuffle = false) {
     vertexId_t nv = -1;
     length_t ne = -1;
     const int MAX_CHARS = 1000;
@@ -108,10 +110,16 @@ void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath
 
     vector<pair<vertexId_t, vertexId_t> >().swap(edges); // deallocates edges
 
-    // sort graph vertices and use to create relabeling map
+    // sort graph vertices (or randomize) and use to create relabeling map
     nv = vertex_set.size();
     vector<vertexId_t> vertices(vertex_set.begin(), vertex_set.end());
     sort(vertices.begin(), vertices.end());
+    if (shuffle) {
+        cout << "Assigning random vertex IDs" << endl;
+        srand(RAND_SEED);
+        random_shuffle(vertices.begin(), vertices.end());
+    }
+
     unordered_map<vertexId_t, vertexId_t> relabel_map;
     for (length_t i=0; i<nv; i++) {
     	relabel_map[vertices[i]] = i;
@@ -385,6 +393,7 @@ int main(const int argc, char *argv[])
     bool get_degrees = hasOption("--degrees", argc, argv);
     bool get_com_stats = hasOption("--community", argc, argv);
     bool edge_dups = hasOption("--duplicates", argc, argv);
+    bool randomize = hasOption("--random", argc, argv);
     int undirected = getIntOption("--undirected", argc, argv);
 
     clock_t diff;
@@ -398,7 +407,7 @@ int main(const int argc, char *argv[])
     } else if (edge_dups) {
         printf("Duplicated eges: %d\n", checkDuplicateEdges(input_graph_path));
     } else {
-        readGraph(input_graph_path, output_graph_path, mapping_path, undirected);
+        readGraph(input_graph_path, output_graph_path, mapping_path, undirected, randomize);
     }
     diff = clock() - start;
     int msec = diff * 1000 / CLOCKS_PER_SEC;
