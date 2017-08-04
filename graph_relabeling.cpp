@@ -18,7 +18,13 @@ using namespace std;
 
 const unsigned int RAND_SEED = 32894;
 
-void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath, int undirected, bool shuffle = false) {
+/**
+ * [undirected] if true, then only the unique, direction-agnostic set of edges of the original input are considered
+ * [noSelfEdges] by default, self-edges are excluded
+ * [shuffle]: randomly permute vertex IDs
+ * - duplicate edges are always removed
+ */
+void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath, bool undirected, bool shuffle = false, bool noSelfEdges = true) {
     vertexId_t nv = -1;
     length_t ne = -1;
     const int MAX_CHARS = 1000;
@@ -67,7 +73,8 @@ void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath
             desttemp-=1;
         }
         if (undirected) {
-            edges[counter]= make_pair(min(srctemp, desttemp), max(srctemp, desttemp));
+            // treat bi-directional edges as same edge, for later filtering
+            edges[counter]= make_pair(min(srctemp, desttemp), max(srctemp, desttemp)); 
         } else {
             edges[counter] = make_pair(srctemp, desttemp);
         }
@@ -80,32 +87,37 @@ void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath
     printf("Original input: %d vertices, %d edges\n", vertex_set.size(), edges.size());
     assert(edges.size() == ne);
 
-    // convert to undirected edges, and remove potential duplicates
-    vector<pair<vertexId_t, vertexId_t> > edges_final;
     if (undirected) {
-        sort(edges.begin(), edges.end(), sortByPairAsec);
-        vertexId_t prev_first = -1;
-        vertexId_t prev_second = -1;
-        vertexId_t first, second;
-        int duplicates = 0;
-        for (vector<pair<vertexId_t, vertexId_t> >::iterator pair = edges.begin(); pair != edges.end(); pair++) {
-            first = pair->first;
-            second = pair->second;
-            if (first == prev_first && second == prev_second) {
-                duplicates += 1;
-            } else {
-                edges_final.push_back(*pair);
-                if (undirected == 2) {
-                    edges_final.push_back(make_pair(second, first));
-                }
-            }
+        printf("Processing undirected graph\n");
+    } else {
+        printf("Processing directed graph\n");
+    }
+
+    // process to remove potential duplicates and/or self-loops
+    vector<pair<vertexId_t, vertexId_t> > edges_final;
+    sort(edges.begin(), edges.end(), sortByPairAsec);
+    vertexId_t prev_first = -1;
+    vertexId_t prev_second = -1;
+    vertexId_t first, second;
+    int duplicates = 0;
+    int selfLoops = 0;
+    for (vector<pair<vertexId_t, vertexId_t> >::iterator pair = edges.begin(); pair != edges.end(); pair++) {
+        first = pair->first;
+        second = pair->second;
+        if (noSelfEdges && (first == second)) {
+            selfLoops += 1;
+        } else if (first == prev_first && second == prev_second) {
+            duplicates += 1;
+        }  else {
+            edges_final.push_back(*pair);
             prev_first = first;
             prev_second = second;
         }
-        ne = edges_final.size();
-        printf("Removed %d duplicate edges in conversion to undirected\n", duplicates);
-    } else {
-        edges_final = edges;
+    }
+    ne = edges_final.size();
+    printf("Removed %d duplicate edges\n", duplicates);
+    if (noSelfEdges) {
+        printf("Removed %d self-loop edges\n", selfLoops);
     }
 
     vector<pair<vertexId_t, vertexId_t> >().swap(edges); // deallocates edges
@@ -136,7 +148,11 @@ void readGraph(char* inputGraphPath, char* relabeledGraphPath, char* mappingPath
         fout << "# Nodes: " << vertices.size() << " " << "Edges: " << ne << "\n";
     } else if (isMarketOutput) {
         printf("Outputting new matrix market graph\n");
-        fout << "\%\%MatrixMarket matrix coordinate pattern symmetric\n";
+        if (undirected) {
+            fout << "\%\%MatrixMarket matrix coordinate pattern symmetric\n";
+        } else {
+            fout << "\%\%MatrixMarket matrix coordinate pattern general\n";
+        }
         fout << vertices.size() << " " <<  vertices.size() << " " << ne << "\n";
     } else {
         cout << "Unrecognized output graph file type: defaulting to SNAP .txt" << endl;
@@ -394,7 +410,8 @@ int main(const int argc, char *argv[])
     bool get_com_stats = hasOption("--community", argc, argv);
     bool edge_dups = hasOption("--duplicates", argc, argv);
     bool randomize = hasOption("--random", argc, argv);
-    int undirected = getIntOption("--undirected", argc, argv);
+    bool undirected = hasOption("--undirected", argc, argv);
+    // bool selfLoops = hasOption("--selfloops", argc, argv);
 
     clock_t diff;
     clock_t start = clock();
